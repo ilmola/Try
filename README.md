@@ -34,7 +34,7 @@ To create a `SourceContext` use the macro `SC`. It is the *only* macro needed.
 It creates a `SourceContext` so if a test case fails the line can be reported.
 
 The parameter `test` is the test to run. Usually a lambda function. The 
-return value of the test case is ignored. *To fail the test throw any exception*
+return value of the test case is ignored. **To fail the test throw any exception**
 with an appropriate message. 
 
 `args` are the arguments forwarded to the test case when called. You can 
