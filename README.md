@@ -106,17 +106,17 @@ Similarly there are also methods `notequal`, `less`, and `lequal`.
 
 Another common case is to test if a function throws on invalid input. Helper
 method `throws` will construct a test case that will fail if the test case does 
-not throw.
+not throw an exception of given type (or at all).
 
 ~~~c++
-template <typename F, typename... Args>
+template <typename T, typename F, typename... Args>
 void Try::throws(SourceContext&& sc, F test, const Args&... args) noexcept;
 ~~~
 
 Example:
 
 ~~~c++
-tr.throws(SC, [] () {
+tr.throws<std::out_of_range>(SC, [] () {
 	std::vector<int> data{1, 2, 3};
 	data.at(data.size());
 });

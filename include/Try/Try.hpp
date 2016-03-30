@@ -20,7 +20,7 @@ class SourceContext {
 public:
 
 	SourceContext(const char* file, std::size_t line) noexcept :
-		file(file), line(line) { }
+		file{file}, line{line} { }
 
 	const char* file;
 
@@ -109,7 +109,7 @@ public:
 			++mSuccesCount;
 			return true;
 		}
-		catch (std::exception& e) {
+		catch (const std::exception& e) {
 			os() << "Test failed: " << sc << std::endl;
 			os() << "Message: \"" <<  e.what() << "\"" << std::endl;
 		}
@@ -119,7 +119,7 @@ public:
 		}
 
 		if (sizeof...(args) == 0) {
-			os() << "(no arguments)" << std::endl;
+			os() << "(no arguments)" << std::endl << std::endl;
 		}
 		else {
 			os() << "Arguments:" << std::endl;
@@ -137,8 +137,10 @@ public:
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
 	bool equal(SourceContext&& sc, const T1& a, const T2& b) noexcept {
-		return (*this)(std::move(sc), [](const T1& a, const T2& b){
-			if (!(a == b)) throw std::runtime_error("Arguments are not equal!");
+		return (*this)(std::move(sc), [](const T1& a, const T2& b) {
+			if (!(a == b)) {
+				throw std::runtime_error{"Arguments are not equal!"};
+			}
 		}, a, b);
 	}
 
@@ -149,8 +151,10 @@ public:
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
 	bool notequal(SourceContext&& sc, const T1& a, const T2& b) noexcept {
-		return (*this)(std::move(sc), [](const T1& a, const T2& b){
-			if (!(a != b)) throw std::runtime_error("Arguments are equal!");
+		return (*this)(std::move(sc), [](const T1& a, const T2& b) {
+			if (!(a != b)) {
+				throw std::runtime_error{"Arguments are equal!"};
+			}
 		}, a, b);
 	}
 
@@ -161,8 +165,10 @@ public:
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
 	bool less(SourceContext&& sc, const T1& a, const T2& b) noexcept {
-		return (*this)(std::move(sc), [](const T1& a, const T2& b){
-			if (!(a < b)) throw std::runtime_error("The first argument is not less than the second!");
+		return (*this)(std::move(sc), [](const T1& a, const T2& b) {
+			if (!(a < b)) {
+				throw std::runtime_error{"The first argument is not less than the second!"};
+			}
 		}, a, b);
 	}
 
@@ -174,26 +180,38 @@ public:
 	template <typename T1, typename T2>
 	bool lequal(SourceContext&& sc, const T1& a, const T2& b) noexcept {
 		return (*this)(std::move(sc), [](const T1& a, const T2& b){
-			if (!(a <= b)) throw std::runtime_error("The first argument is not less than or equal to the second!");
+			if (!(a <= b)) {
+				throw std::runtime_error{"The first argument is not less than or equal to the second!"};
+			}
 		}, a, b);
 	}
 
-	/// Constructs and runs a test case that succeeds if it throws and fails if
-	/// it does not. The return value will make no difference.
+	/// Constructs and runs a test case that succeeds if it throws type T and 
+	/// fails if it does not. The return value will make no difference.
+	/// @tpraram T The type that needs to be thrown for the test to pass.
 	/// @param sc Use the macro SC in place of this parameter.
 	/// @param test A lambda function that runs the test.
 	/// @param args The arguments given to the lambda when run.
 	/// @return true if the test succeeds and false if it fails.
-	template <typename F, typename... Args>
+	template <typename T, typename F, typename... Args>
 	bool throws(SourceContext&& sc, F test, const Args&... args) noexcept {
 		return (*this)(std::move(sc), [test](const Args&... args) {
 			try {
 				test(args...);
 			}
-			catch (...) {
+			catch (const T&) {
 				return;
 			}
-			throw std::runtime_error("Test did not throw!");
+			catch (const std::exception& e) {
+				throw std::runtime_error{
+					"Test throws a wrong exception ("+std::string{typeid(e).name()}+"): "+e.what()
+				};
+			}
+			catch (...) {
+				throw std::runtime_error{"Test throws a wrong non-exception!"};
+			}
+
+			throw std::runtime_error{"Test did not throw!"};
 		}, args...);
 	}
 
