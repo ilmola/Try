@@ -65,6 +65,10 @@ void stream(std::ostream& os, const T&) {
 	os << "[Can't print'] (" << typeid(T).name() << ")";
 }
 
+inline void stream(std::ostream& os, const std::nullptr_t&) {
+	os << "\"nullptr\" (nullptr_t)";
+}
+
 inline void streamArgs(std::ostream& os) noexcept { os << std::endl; }
 
 template <typename T, typename... Args>
