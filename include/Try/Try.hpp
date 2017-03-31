@@ -134,6 +134,34 @@ public:
 		return false;
 	}
 
+	/// Runs a test case that checks if a and b are the same object.
+	/// The test will succeed if &a == &b and fails if not.
+	/// @param sc Use the macro SC in place of this parameter.
+	/// @param a,b Values addresses of which to compare.
+	/// @return true if the test succeeds false if not.
+	template <typename T1, typename T2>
+	bool same(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+		return (*this)(std::move(sc), [](const T1* a, const T2* b) {
+			if (a != b) {
+				throw std::runtime_error{"Arguments are not the same object!"};
+			}
+		}, &a, &b);
+	}
+
+	/// Runs a test case that checks if a and b are NOT the same object.
+	/// The test will succeed if &a != &b and fails if not.
+	/// @param sc Use the macro SC in place of this parameter.
+	/// @param a,b Values addresses of which to compare.
+	/// @return true if the test succeeds false if not.
+	template <typename T1, typename T2>
+	bool notsame(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+		return (*this)(std::move(sc), [](const T1* a, const T2* b) {
+			if (a == b) {
+				throw std::runtime_error{"Arguments are the same object!"};
+			}
+		}, &a, &b);
+	}
+
 	/// Constructs and runs a test case that checks if a == b.
 	/// The test will succeed if a == b and fails if not or if the "==" throws.
 	/// @param sc Use the macro SC in place of this parameter.
@@ -190,7 +218,7 @@ public:
 		}, a, b);
 	}
 
-	/// Constructs and runs a test case that succeeds if it throws type T and 
+	/// Constructs and runs a test case that succeeds if it throws type T and
 	/// fails if it does not. The return value will make no difference.
 	/// @tpraram T The type that needs to be thrown for the test to pass.
 	/// @param sc Use the macro SC in place of this parameter.
