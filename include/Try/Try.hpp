@@ -6,7 +6,7 @@
 #include <type_traits>
 #include <stdexcept>
 #include <typeinfo>
-
+#include <cmath>
 
 
 namespace Try {
@@ -30,7 +30,8 @@ public:
 
 #define SC ::Try::SourceContext{__FILE__, __LINE__}
 
-inline std::ostream& operator<<(std::ostream& os, const SourceContext& sc) noexcept {
+inline std::ostream& operator<<(std::ostream& os, const SourceContext& sc) noexcept
+{
 	os << sc.file << ", line " << sc.line;
 	return os;
 }
@@ -56,23 +57,27 @@ public:
 
 
 template <typename T, typename std::enable_if<is_streamable<T>::value>::type* = nullptr>
-void stream(std::ostream& os, const T& arg) {
+void stream(std::ostream& os, const T& arg)
+{
 	os << "\"" << arg << "\" (" << typeid(T).name() << ")";
 }
 
 template <typename T, typename std::enable_if<!is_streamable<T>::value>::type* = nullptr>
-void stream(std::ostream& os, const T&) {
+void stream(std::ostream& os, const T&)
+{
 	os << "[Can't print'] (" << typeid(T).name() << ")";
 }
 
-inline void stream(std::ostream& os, const std::nullptr_t&) {
+inline void stream(std::ostream& os, const std::nullptr_t&)
+{
 	os << "\"nullptr\" (nullptr_t)";
 }
 
 inline void streamArgs(std::ostream& os) noexcept { os << std::endl; }
 
 template <typename T, typename... Args>
-void streamArgs(std::ostream& os, const T& first, const Args&... args) noexcept {
+void streamArgs(std::ostream& os, const T& first, const Args&... args) noexcept
+{
 	stream(os, first);
 	os << std::endl;
 	streamArgs(os, args...);
@@ -107,7 +112,8 @@ public:
 	/// @param args Given to the test case function when called.
 	/// @return false if test fails (throws) and true otherwise
 	template <typename F, typename... Args>
-	bool operator()(SourceContext&& sc, F test, const Args&... args) noexcept {
+	bool operator()(SourceContext&& sc, F test, const Args&... args) noexcept
+	{
 		try {
 			test(args...);
 			++mSuccesCount;
@@ -140,7 +146,8 @@ public:
 	/// @param a,b Values addresses of which to compare.
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
-	bool same(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+	bool same(SourceContext&& sc, const T1& a, const T2& b) noexcept
+	{
 		return (*this)(std::move(sc), [](const T1* a, const T2* b) {
 			if (a != b) {
 				throw std::runtime_error{"Arguments are not the same object!"};
@@ -154,7 +161,8 @@ public:
 	/// @param a,b Values addresses of which to compare.
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
-	bool notsame(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+	bool notsame(SourceContext&& sc, const T1& a, const T2& b) noexcept
+	{
 		return (*this)(std::move(sc), [](const T1* a, const T2* b) {
 			if (a == b) {
 				throw std::runtime_error{"Arguments are the same object!"};
@@ -168,7 +176,8 @@ public:
 	/// @param a,b Values to compare with the == operator.
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
-	bool equal(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+	bool equal(SourceContext&& sc, const T1& a, const T2& b) noexcept
+	{
 		return (*this)(std::move(sc), [](const T1& a, const T2& b) {
 			if (!(a == b)) {
 				throw std::runtime_error{"Arguments are not equal!"};
@@ -182,7 +191,8 @@ public:
 	/// @param a,b Values to compare with the != operator.
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
-	bool notequal(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+	bool notequal(SourceContext&& sc, const T1& a, const T2& b) noexcept
+	{
 		return (*this)(std::move(sc), [](const T1& a, const T2& b) {
 			if (!(a != b)) {
 				throw std::runtime_error{"Arguments are equal!"};
@@ -190,13 +200,44 @@ public:
 		}, a, b);
 	}
 
+	/// Constructs and runs a test case that checks if distance(a, b) < epsilon.
+	/// @param sc Use the macro SC in place of this parameter.
+	/// @return true if the test succeeds false if not.
+	template <typename T, typename E, typename F>
+	bool close(
+		SourceContext&& sc, const T& a, const T& b, const E& epsilon, F distance
+	) noexcept
+	{
+		return (*this)(std::move(sc), [&distance] (const T& a, const T& b, const E& e) {
+			if (!(distance(a, b) < e)) {
+				throw std::runtime_error{"Arguments are not close!"};
+			}
+		}, a, b, epsilon);
+	}
+
+
+	/// Constructs and runs a test case that checks if fabs(a - b) < epsilon.
+	/// @param sc Use the macro SC in place of this parameter.
+	/// @return true if the test succeeds false if not.
+	template <typename T, typename E>
+	bool close(SourceContext&& sc, const T& a, const T& b, const E& epsilon) noexcept
+	{
+		auto distance = [] (const T& a, const T& b) -> E {
+			using std::fabs;
+			return fabs(a - b);
+		};
+		return close(std::move(sc), a, b, epsilon, distance);
+	}
+
+
 	/// Constructs and runs a test case that checks if a < b.
 	/// The test will succeed if a < b and fails if not or if "<" throws.
 	/// @param sc Use the macro SC in place of this parameter.
 	/// @param a,b Values to compare with the < operator.
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
-	bool less(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+	bool less(SourceContext&& sc, const T1& a, const T2& b) noexcept
+	{
 		return (*this)(std::move(sc), [](const T1& a, const T2& b) {
 			if (!(a < b)) {
 				throw std::runtime_error{"The first argument is not less than the second!"};
@@ -210,7 +251,8 @@ public:
 	/// @param a,b Values to compare with the <= operator.
 	/// @return true if the test succeeds false if not.
 	template <typename T1, typename T2>
-	bool lequal(SourceContext&& sc, const T1& a, const T2& b) noexcept {
+	bool lequal(SourceContext&& sc, const T1& a, const T2& b) noexcept
+	{
 		return (*this)(std::move(sc), [](const T1& a, const T2& b){
 			if (!(a <= b)) {
 				throw std::runtime_error{"The first argument is not less than or equal to the second!"};
@@ -226,7 +268,8 @@ public:
 	/// @param args The arguments given to the lambda when run.
 	/// @return true if the test succeeds and false if it fails.
 	template <typename T, typename F, typename... Args>
-	bool throws(SourceContext&& sc, F test, const Args&... args) noexcept {
+	bool throws(SourceContext&& sc, F test, const Args&... args) noexcept
+	{
 		return (*this)(std::move(sc), [test](const Args&... args) {
 			try {
 				test(args...);
